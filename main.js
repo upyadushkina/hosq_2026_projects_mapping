@@ -59,16 +59,14 @@ function normalizeData(csvData) {
     // Convert Google Drive link to direct image URL if needed
     let photoLink = row['photo link'] || '';
     if (photoLink && photoLink.trim() !== '') {
-      // Check if it's a Google Drive view link and convert to direct image URL
-      if (photoLink.includes('drive.google.com/file/d/')) {
-        // Extract file ID from Google Drive link
-        const match = photoLink.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-        if (match && match[1]) {
-          photoLink = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      // Convert Google Drive view link to thumbnail URL
+      if (photoLink.includes('drive.google.com') && photoLink.includes('/d/')) {
+        const parts = photoLink.split('/d/');
+        if (parts.length > 1) {
+          const fileId = parts[1].split('/')[0];
+          photoLink = `https://drive.google.com/thumbnail?id=${fileId}`;
         }
       }
-      // If it's already a uc?export=view link, keep it as is
-      // Otherwise, assume it's a direct image URL
     }
     
     // Create node object
