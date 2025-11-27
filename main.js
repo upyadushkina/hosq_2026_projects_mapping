@@ -63,8 +63,9 @@ function normalizeData(csvData) {
       if (photoLink.includes('drive.google.com') && photoLink.includes('/d/')) {
         const parts = photoLink.split('/d/');
         if (parts.length > 1) {
-          const fileId = parts[1].split('/')[0];
-          photoLink = `https://drive.google.com/thumbnail?id=${fileId}`;
+          const fileId = parts[1].split('/')[0].split('?')[0]; // Get file ID, remove query params
+          photoLink = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+          console.log('Converted Google Drive URL:', row['photo link'], '->', photoLink);
         }
       }
     }
@@ -220,6 +221,8 @@ function initVisualization(data) {
         .attr('id', clipId);
       
       clipPath.append('circle')
+        .attr('cx', 0)
+        .attr('cy', 0)
         .attr('r', radius);
     }
   });
@@ -236,6 +239,8 @@ function initVisualization(data) {
   nodeGroups.each(function(d, i) {
     if (d.photoLink && d.photoLink.trim() !== '') {
       const radius = 5 + d.scale * 3;
+      console.log('Adding image for node:', d.name, 'URL:', d.photoLink, 'Radius:', radius);
+      
       const imageElement = d3.select(this)
         .append('image')
         .attr('href', d.photoLink) // Use href for modern browsers
@@ -246,18 +251,20 @@ function initVisualization(data) {
         .attr('height', radius * 2)
         .attr('preserveAspectRatio', 'xMidYMid slice')
         .attr('clip-path', `url(#clip-${i})`)
-        .style('opacity', 1);
+        .style('opacity', 0); // Start hidden, show when loaded
       
-      // Preload image to verify it loads (for debugging)
+      // Preload image to verify it loads
       const testImg = new Image();
+      testImg.crossOrigin = 'anonymous';
       testImg.onload = function() {
         // Image loaded successfully
+        console.log('Image loaded successfully for:', d.name);
         imageElement.style('opacity', 1);
       };
       testImg.onerror = function() {
         // Image failed to load - hide the SVG image element
+        console.error('Failed to load image for node:', d.name, 'URL:', d.photoLink);
         imageElement.style('opacity', 0);
-        console.warn('Failed to load image for node:', d.name, 'URL:', d.photoLink);
       };
       // Start loading the image
       testImg.src = d.photoLink;
