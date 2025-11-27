@@ -56,6 +56,21 @@ function normalizeData(csvData) {
     // Convert scale to number
     const scale = parseFloat(row.scale) || 1;
     
+    // Convert Google Drive link to direct image URL if needed
+    let photoLink = row['photo link'] || '';
+    if (photoLink && photoLink.trim() !== '') {
+      // Check if it's a Google Drive view link and convert to direct image URL
+      if (photoLink.includes('drive.google.com/file/d/')) {
+        // Extract file ID from Google Drive link
+        const match = photoLink.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+        if (match && match[1]) {
+          photoLink = `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        }
+      }
+      // If it's already a uc?export=view link, keep it as is
+      // Otherwise, assume it's a direct image URL
+    }
+    
     // Create node object
     const node = {
       id: row['project name'],
@@ -67,7 +82,7 @@ function normalizeData(csvData) {
       scale: scale,
       description: row.description || '',
       previousEvent: row['previous event'] || '',
-      photoLink: row['photo link'] || '',
+      photoLink: photoLink,
       connectedProjects: connectedProjects
     };
     
@@ -223,19 +238,31 @@ function initVisualization(data) {
   nodeGroups.each(function(d, i) {
     if (d.photoLink && d.photoLink.trim() !== '') {
       const radius = 5 + d.scale * 3;
-      d3.select(this)
+      const imageElement = d3.select(this)
         .append('image')
-        .attr('xlink:href', d.photoLink)
+        .attr('href', d.photoLink) // Use href for modern browsers
+        .attr('xlink:href', d.photoLink) // Fallback for older browsers  
         .attr('x', -radius)
         .attr('y', -radius)
         .attr('width', radius * 2)
         .attr('height', radius * 2)
         .attr('preserveAspectRatio', 'xMidYMid slice')
         .attr('clip-path', `url(#clip-${i})`)
-        .on('error', function() {
-          // If image fails to load, it will just not show (circle color will be visible)
-          d3.select(this).remove();
-        });
+        .style('opacity', 1);
+      
+      // Preload image to verify it loads (for debugging)
+      const testImg = new Image();
+      testImg.onload = function() {
+        // Image loaded successfully
+        imageElement.style('opacity', 1);
+      };
+      testImg.onerror = function() {
+        // Image failed to load - hide the SVG image element
+        imageElement.style('opacity', 0);
+        console.warn('Failed to load image for node:', d.name, 'URL:', d.photoLink);
+      };
+      // Start loading the image
+      testImg.src = d.photoLink;
     }
   });
   
