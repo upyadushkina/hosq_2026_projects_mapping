@@ -11,6 +11,7 @@ let selectedTypes = new Set();
 let selectedFields = new Set();
 let searchQuery = '';
 let clickedNode = null; // Track clicked node to keep popup visible
+let hoveredNode = null; // Track hovered node for popup updates
 
 // Schedule order for left-to-right positioning
 const SCHEDULE_ORDER = ['Winter', 'Spring', 'Summer', 'Fall'];
@@ -197,7 +198,7 @@ function initVisualization(data) {
   
   // For each node, create clipPath if it has a photo
   data.nodes.forEach((node, i) => {
-    const radius = 5 + node.scale * 10;
+    const radius = 5 + node.scale * 4;
     const clipId = `clip-${i}`;
     
     if (node.photoLink && node.photoLink.trim() !== '') {
@@ -213,7 +214,7 @@ function initVisualization(data) {
   // Create circles for nodes (background/fill)
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
-    .attr('r', d => 5 + d.scale * 10)
+    .attr('r', d => 5 + d.scale * 4)
     .attr('fill', d => d.color) // Fallback color
     .attr('stroke', '#262123')
     .attr('stroke-width', 2);
@@ -221,7 +222,7 @@ function initVisualization(data) {
   // Add images inside circles for nodes with photos
   nodeGroups.each(function(d, i) {
     if (d.photoLink && d.photoLink.trim() !== '') {
-      const radius = 5 + d.scale * 10;
+      const radius = 5 + d.scale * 4;
       d3.select(this)
         .append('image')
         .attr('xlink:href', d.photoLink)
@@ -238,6 +239,17 @@ function initVisualization(data) {
     }
   });
   
+  // Add labels (project names) to all nodes
+  nodeGroups.append('text')
+    .attr('class', 'node-label')
+    .text(d => d.name)
+    .attr('font-size', 10)
+    .attr('text-anchor', 'middle')
+    .attr('dy', d => (5 + d.scale * 4) + 14) // Position below the circle
+    .attr('fill', '#E8DED3')
+    .attr('pointer-events', 'none')
+    .style('font-family', 'Lexend-Regular');
+  
   // Update positions on simulation tick
   simulation.on('tick', () => {
     linkElements
@@ -249,15 +261,16 @@ function initVisualization(data) {
     nodeGroups
       .attr('transform', d => `translate(${d.x},${d.y})`);
     
-    // Update popup position if a node is clicked
-    if (clickedNode) {
-      const event = { clientX: 0, clientY: 0 };
-      updatePopupPosition(clickedNode, event);
+    // Update popup position if a node is clicked or hovered
+    const nodeToUpdate = clickedNode || hoveredNode;
+    if (nodeToUpdate) {
+      updatePopupPosition(nodeToUpdate);
     }
   });
   
   // Handle click on background to close popup
   svg.on('click', function(event) {
+    // Only close if clicking on background (not on a node)
     if (event.target === svg.node() || event.target === g.node()) {
       clickedNode = null;
       hidePopup();
@@ -289,6 +302,8 @@ function dragEnded(event, d) {
  * Handle node hover
  */
 function handleNodeHover(event, d) {
+  hoveredNode = d;
+  
   // Highlight edges connected to this node
   linkElements
     .classed('highlighted', l => l.source.id === d.id || l.target.id === d.id)
@@ -303,14 +318,16 @@ function handleNodeHover(event, d) {
     return 0.25; // Reduced opacity for non-matching types
   });
   
-  // Show popup on hover (always show, even if clicked)
-  showPopup(d, event);
+  // Show popup on hover
+  showPopup(d);
 }
 
 /**
  * Handle node mouse out
  */
 function handleNodeMouseOut(event, d) {
+  hoveredNode = null;
+  
   // Only hide popup if this node wasn't clicked
   // If a node is clicked, keep popup visible even on mouseout
   if (clickedNode && clickedNode.id === d.id) {
@@ -340,13 +357,13 @@ function handleNodeMouseOut(event, d) {
 function handleNodeClick(event, d) {
   event.stopPropagation();
   clickedNode = d;
-  showPopup(d, event);
+  showPopup(d);
 }
 
 /**
  * Show popup with project information
  */
-function showPopup(node, event) {
+function showPopup(node) {
   const popup = document.getElementById('popup');
   if (!popup) return;
   
@@ -383,55 +400,26 @@ function showPopup(node, event) {
   }
   
   popup.innerHTML = html;
-  popup.classList.add('active');
+  popup.style.display = 'block';
   
-  // Position popup near the node (use setTimeout to ensure DOM is updated)
-  setTimeout(() => {
-    updatePopupPosition(node, event);
-  }, 0);
+  // Position popup near the node
+  updatePopupPosition(node);
 }
 
 /**
  * Update popup position based on node location
  */
-function updatePopupPosition(node, event) {
+function updatePopupPosition(node) {
   const popup = document.getElementById('popup');
-  if (!popup || !svg || !popup.classList.contains('active')) return;
+  if (!popup || !svg || popup.style.display !== 'block') return;
   
-  // Use requestAnimationFrame to ensure popup is rendered before measuring
-  requestAnimationFrame(() => {
-    const transform = d3.zoomTransform(svg.node());
-    const x = node.x * transform.k + transform.x;
-    const y = node.y * transform.k + transform.y;
-    
-    // Position popup above and to the right of the node
-    const popupWidth = 280;
-    const popupHeight = popup.offsetHeight || 200;
-    const radius = 5 + node.scale * 10;
-    
-    // Get viewport dimensions
-    const container = d3.select('.content').node();
-    const viewportWidth = container.clientWidth;
-    const viewportHeight = container.clientHeight;
-    
-    // Calculate position (prefer above and to the right)
-    let left = x + radius + 15;
-    let top = y - popupHeight / 2;
-    
-    // Adjust if popup would go off screen
-    if (left + popupWidth > viewportWidth) {
-      left = x - popupWidth - radius - 15; // Position to the left instead
-    }
-    if (top < 0) {
-      top = y + radius + 15; // Position below if not enough space above
-    }
-    if (top + popupHeight > viewportHeight) {
-      top = viewportHeight - popupHeight - 10; // Adjust to fit
-    }
-    
-    popup.style.left = left + 'px';
-    popup.style.top = top + 'px';
-  });
+  const transform = d3.zoomTransform(svg.node());
+  const x = node.x * transform.k + transform.x;
+  const y = node.y * transform.k + transform.y;
+  
+  // Position popup to the right and slightly below the node (like in example)
+  popup.style.left = (x + 15) + 'px';
+  popup.style.top = (y + 15) + 'px';
 }
 
 /**
@@ -440,7 +428,7 @@ function updatePopupPosition(node, event) {
 function hidePopup() {
   const popup = document.getElementById('popup');
   if (popup) {
-    popup.classList.remove('active');
+    popup.style.display = 'none';
   }
 }
 
@@ -601,8 +589,7 @@ async function init() {
   if (svg) {
     svg.on('zoom', () => {
       if (clickedNode) {
-        const event = { clientX: 0, clientY: 0 };
-        updatePopupPosition(clickedNode, event);
+        updatePopupPosition(clickedNode);
       }
     });
   }
