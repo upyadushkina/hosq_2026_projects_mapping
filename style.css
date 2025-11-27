@@ -178,10 +178,6 @@ header h1 {
   font-family: 'Lexend-Regular', sans-serif;
 }
 
-.popup.active {
-  display: block;
-}
-
 .popup-photo {
   width: 100%;
   max-width: 100%;
@@ -275,6 +271,13 @@ header h1 {
 /* Node image pattern */
 .node-image {
   pointer-events: none;
+}
+
+/* Node labels */
+.node-label {
+  font-family: 'Lexend-Regular', sans-serif;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* Responsive Design */
