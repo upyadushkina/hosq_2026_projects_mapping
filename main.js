@@ -65,7 +65,6 @@ function normalizeData(csvData) {
         if (parts.length > 1) {
           const fileId = parts[1].split('/')[0].split('?')[0]; // Get file ID, remove query params
           photoLink = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
-          console.log('Converted Google Drive URL:', row['photo link'], '->', photoLink);
         }
       }
     }
@@ -239,8 +238,8 @@ function initVisualization(data) {
   nodeGroups.each(function(d, i) {
     if (d.photoLink && d.photoLink.trim() !== '') {
       const radius = 5 + d.scale * 3;
-      console.log('Adding image for node:', d.name, 'URL:', d.photoLink, 'Radius:', radius);
       
+      // Add image element (will be on top of circle)
       const imageElement = d3.select(this)
         .append('image')
         .attr('href', d.photoLink) // Use href for modern browsers
@@ -251,19 +250,17 @@ function initVisualization(data) {
         .attr('height', radius * 2)
         .attr('preserveAspectRatio', 'xMidYMid slice')
         .attr('clip-path', `url(#clip-${i})`)
-        .style('opacity', 0); // Start hidden, show when loaded
+        .style('opacity', 1); // Make visible immediately
       
-      // Preload image to verify it loads
+      // Preload image to verify it loads and handle errors
       const testImg = new Image();
       testImg.crossOrigin = 'anonymous';
       testImg.onload = function() {
-        // Image loaded successfully
-        console.log('Image loaded successfully for:', d.name);
+        // Image loaded successfully - ensure it's visible
         imageElement.style('opacity', 1);
       };
       testImg.onerror = function() {
-        // Image failed to load - hide the SVG image element
-        console.error('Failed to load image for node:', d.name, 'URL:', d.photoLink);
+        // Image failed to load - hide the SVG image element (show circle color instead)
         imageElement.style('opacity', 0);
       };
       // Start loading the image
