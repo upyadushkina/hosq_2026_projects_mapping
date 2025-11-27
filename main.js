@@ -198,7 +198,7 @@ function initVisualization(data) {
   
   // For each node, create clipPath if it has a photo
   data.nodes.forEach((node, i) => {
-    const radius = 5 + node.scale * 4;
+    const radius = 5 + node.scale * 3;
     const clipId = `clip-${i}`;
     
     if (node.photoLink && node.photoLink.trim() !== '') {
@@ -214,7 +214,7 @@ function initVisualization(data) {
   // Create circles for nodes (background/fill)
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
-    .attr('r', d => 5 + d.scale * 4)
+    .attr('r', d => 5 + d.scale * 3)
     .attr('fill', d => d.color) // Fallback color
     .attr('stroke', '#262123')
     .attr('stroke-width', 2);
@@ -222,7 +222,7 @@ function initVisualization(data) {
   // Add images inside circles for nodes with photos
   nodeGroups.each(function(d, i) {
     if (d.photoLink && d.photoLink.trim() !== '') {
-      const radius = 5 + d.scale * 4;
+      const radius = 5 + d.scale * 3;
       d3.select(this)
         .append('image')
         .attr('xlink:href', d.photoLink)
@@ -245,10 +245,10 @@ function initVisualization(data) {
     .text(d => d.name)
     .attr('font-size', 10)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => (5 + d.scale * 4) + 14) // Position below the circle
+    .attr('dy', d => (5 + d.scale * 3) + 14) // Position below the circle
     .attr('fill', '#E8DED3')
     .attr('pointer-events', 'none')
-    .style('font-family', 'Lexend-Regular');
+    .style('font-family', 'Lexend-Medium');
   
   // Update positions on simulation tick
   simulation.on('tick', () => {
@@ -270,11 +270,35 @@ function initVisualization(data) {
   
   // Handle click on background to close popup
   svg.on('click', function(event) {
-    // Only close if clicking on background (not on a node)
+    // Only close if clicking on background (not on a node or popup)
     if (event.target === svg.node() || event.target === g.node()) {
       clickedNode = null;
+      hoveredNode = null;
       hidePopup();
     }
+  });
+  
+  // Handle clicks outside popup to close it (for mobile and desktop)
+  document.addEventListener('click', function(event) {
+    const popup = document.getElementById('popup');
+    if (!popup || popup.style.display !== 'block') return;
+    
+    // Don't close if clicking inside the popup
+    if (popup.contains(event.target)) {
+      return;
+    }
+    
+    // Don't close if clicking on a node
+    if (event.target.closest('.node-group') || 
+        event.target.classList.contains('node') ||
+        event.target.closest('circle')) {
+      return;
+    }
+    
+    // Close popup if clicking outside
+    clickedNode = null;
+    hoveredNode = null;
+    hidePopup();
   });
 }
 
@@ -302,6 +326,11 @@ function dragEnded(event, d) {
  * Handle node hover
  */
 function handleNodeHover(event, d) {
+  // Don't show popup on hover if a node is already clicked (unless it's the same node)
+  if (clickedNode && clickedNode.id !== d.id) {
+    return;
+  }
+  
   hoveredNode = d;
   
   // Highlight edges connected to this node
@@ -318,8 +347,10 @@ function handleNodeHover(event, d) {
     return 0.25; // Reduced opacity for non-matching types
   });
   
-  // Show popup on hover
-  showPopup(d);
+  // Show popup on hover (only if no node is clicked, or if hovering the clicked node)
+  if (!clickedNode || clickedNode.id === d.id) {
+    showPopup(d);
+  }
 }
 
 /**
@@ -328,7 +359,6 @@ function handleNodeHover(event, d) {
 function handleNodeMouseOut(event, d) {
   hoveredNode = null;
   
-  // Only hide popup if this node wasn't clicked
   // If a node is clicked, keep popup visible even on mouseout
   if (clickedNode && clickedNode.id === d.id) {
     // Keep popup visible for clicked node, but reset link/node opacity
@@ -347,8 +377,10 @@ function handleNodeMouseOut(event, d) {
   // Reset all node opacities (but respect filter state)
   applyFilters();
   
-  // Hide popup if not clicked
-  hidePopup();
+  // Hide popup if not clicked (only hide if no node is clicked)
+  if (!clickedNode) {
+    hidePopup();
+  }
 }
 
 /**
@@ -369,7 +401,7 @@ function showPopup(node) {
   
   let html = '';
   
-  // Photo (if available)
+  // Photo (if available) - always show if photo link exists
   if (node.photoLink && node.photoLink.trim() !== '') {
     html += `<img src="${node.photoLink}" alt="${node.name}" class="popup-photo" onerror="this.style.display='none'">`;
   }
@@ -380,8 +412,8 @@ function showPopup(node) {
   // Type (in smaller text, color #4C4646)
   html += `<div class="popup-type">${node.type}</div>`;
   
-  // Description
-  if (node.description && node.description.trim() !== '' && node.description !== '*description*') {
+  // Description - always show if it exists
+  if (node.description && node.description.trim() !== '') {
     html += `<div class="popup-description">${node.description}</div>`;
   }
   
