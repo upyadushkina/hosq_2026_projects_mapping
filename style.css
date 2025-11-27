@@ -1,8 +1,8 @@
 /* Font Face */
 @font-face {
-  font-family: 'Lexend-Regular';
-  src: url('./Lexend-Regular.ttf') format('truetype');
-  font-weight: normal;
+  font-family: 'Lexend-Medium';
+  src: url('./Lexend-Medium.ttf') format('truetype');
+  font-weight: 500;
   font-style: normal;
 }
 
@@ -11,8 +11,8 @@
   --bg-color: #262123;
   --text-color: #E8DED3;
   --link-color: #4C4646;
-  --tag-bg: #E673C8;
-  --tag-text: #262123;
+  --tag-bg: #262123;
+  --tag-text: #E8DED3;
   --type-color: #4C4646;
 }
 
@@ -28,7 +28,7 @@ html, body {
   height: 100%;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: 'Lexend-Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Lexend-Medium', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   overflow: hidden;
 }
 
@@ -173,9 +173,9 @@ header h1 {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   z-index: 100;
   max-width: 280px;
-  pointer-events: none;
+  pointer-events: auto;
   display: none;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
 }
 
 .popup-photo {
@@ -190,14 +190,14 @@ header h1 {
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 4px 0;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
 }
 
 .popup-type {
   font-size: 13px;
   color: var(--type-color);
   margin: 0 0 12px 0;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
 }
 
 .popup-description {
@@ -205,7 +205,7 @@ header h1 {
   color: var(--text-color);
   margin: 0 0 12px 0;
   line-height: 1.4;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
 }
 
 .popup-tags {
@@ -222,7 +222,7 @@ header h1 {
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 500;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
 }
 
 .popup-button {
@@ -234,7 +234,7 @@ header h1 {
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
   cursor: pointer;
   text-decoration: none;
   transition: opacity 0.2s;
@@ -275,7 +275,7 @@ header h1 {
 
 /* Node labels */
 .node-label {
-  font-family: 'Lexend-Regular', sans-serif;
+  font-family: 'Lexend-Medium', sans-serif;
   pointer-events: none;
   user-select: none;
 }
