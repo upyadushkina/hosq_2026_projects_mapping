@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HOSQ 2026 Program Map</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>HOSQ 2026 Program Map</h1>
+  </header>
+
+  <div class="layout">
+    <!-- Left Sidebar: Filters -->
+    <aside class="sidebar" id="sidebar">
+      <h2>Filters</h2>
+      
+      <!-- Type Filter -->
+      <div class="filter-group">
+        <h3>Type</h3>
+        <div class="filter-options" id="type-filters"></div>
+      </div>
+
+      <!-- Fields Filter -->
+      <div class="filter-group">
+        <h3>Fields</h3>
+        <div class="filter-options" id="fields-filters"></div>
+      </div>
+
+      <!-- Search Filter -->
+      <div class="filter-group">
+        <h3>Search</h3>
+        <input type="text" id="search-input" placeholder="Search project name...">
+      </div>
+
+      <!-- Reset Button -->
+      <button id="reset-filters" class="reset-btn">Reset filters</button>
+    </aside>
+
+    <!-- Main Visualization Area -->
+    <main class="content">
+      <svg id="visualization"></svg>
+    </main>
+
+    <!-- Right Detail Panel -->
+    <aside class="detail-panel" id="detail-panel">
+      <button class="close-btn" id="close-panel">&times;</button>
+      <div id="detail-content"></div>
+    </aside>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
+
