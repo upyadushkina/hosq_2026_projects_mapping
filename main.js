@@ -149,6 +149,18 @@ function getNodeXPosition(node, scheduleScale) {
 }
 
 /**
+ * Calculate node radius based on scale value
+ * Uses different formula for phone view (max-width: 768px)
+ */
+function getNodeRadius(scale) {
+  const isPhoneView = window.innerWidth <= 768;
+  if (isPhoneView) {
+    return 10 + scale * 2;
+  }
+  return 5 + scale * 3.7;
+}
+
+/**
  * Initialize the visualization
  */
 function initVisualization(data) {
@@ -203,13 +215,7 @@ function initVisualization(data) {
   SCHEDULE_ORDER.forEach((season, i) => {
     const x = i * columnWidth;
     const nextX = (i + 1) * columnWidth;
-    
-    // Position label at the schedule scale position (where nodes are actually placed)
-    // but center it within the column
-    const scheduleX = scheduleScale(season);
     const columnCenterX = x + columnWidth / 2;
-    // Use column center for label, but align with schedule position if it's within the column
-    const labelX = scheduleX >= x && scheduleX <= nextX ? scheduleX : columnCenterX;
     
     // Create column rectangle (subtle background, optional)
     backgroundColumns.append('rect')
@@ -222,7 +228,7 @@ function initVisualization(data) {
     
     // Add label at the top center of each column
     backgroundColumns.append('text')
-      .attr('x', labelX)
+      .attr('x', columnCenterX)
       .attr('y', 20)
       .attr('text-anchor', 'middle')
       .attr('fill', '#4C4646')
@@ -285,14 +291,14 @@ function initVisualization(data) {
       clipPath.append('circle')
         .attr('cx', 0)
         .attr('cy', 0)
-        .attr('r', 5 + node.scale * 3.7);
+        .attr('r', getNodeRadius(node.scale));
     }
   });
   
   // Create circles for nodes (background/fill) - no stroke
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
-    .attr('r', d => 5 + d.scale * 3.7)
+    .attr('r', d => getNodeRadius(d.scale))
     .attr('fill', d => d.color)
     .attr('stroke', 'none');
 
@@ -300,10 +306,10 @@ function initVisualization(data) {
   nodeGroups.filter(d => d.clipId).append('image')
     .attr('href', d => d.photoLink)
     .attr('xlink:href', d => d.photoLink)
-    .attr('x', d => -(5 + d.scale * 3.7))
-    .attr('y', d => -(5 + d.scale * 3.7))
-    .attr('width', d => (5 + d.scale * 3.7) * 2)
-    .attr('height', d => (5 + d.scale * 3.7) * 2)
+    .attr('x', d => -getNodeRadius(d.scale))
+    .attr('y', d => -getNodeRadius(d.scale))
+    .attr('width', d => getNodeRadius(d.scale) * 2)
+    .attr('height', d => getNodeRadius(d.scale) * 2)
     .attr('preserveAspectRatio', 'xMidYMid slice')
     .attr('clip-path', d => `url(#${d.clipId})`);
   
@@ -313,7 +319,7 @@ function initVisualization(data) {
     .text(d => d.name)
     .attr('font-size', 10)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => (5 + d.scale * 3.7) + 14) // Position below the circle
+    .attr('dy', d => getNodeRadius(d.scale) + 14) // Position below the circle
     .attr('fill', '#E8DED3')
     .attr('pointer-events', 'none')
     .style('font-family', 'Lexend-Medium');
@@ -914,12 +920,7 @@ function handleResize() {
     SCHEDULE_ORDER.forEach((season, i) => {
       const x = i * columnWidth;
       const nextX = (i + 1) * columnWidth;
-      
-      // Position label at the schedule scale position (where nodes are actually placed)
-      const scheduleX = scheduleScale(season);
       const columnCenterX = x + columnWidth / 2;
-      // Use column center for label, but align with schedule position if it's within the column
-      const labelX = scheduleX >= x && scheduleX <= nextX ? scheduleX : columnCenterX;
       
       // Create column rectangle (subtle background, optional)
       backgroundColumns.append('rect')
@@ -932,7 +933,7 @@ function handleResize() {
       
       // Add label at the top center of each column
       backgroundColumns.append('text')
-        .attr('x', labelX)
+        .attr('x', columnCenterX)
         .attr('y', 20)
         .attr('text-anchor', 'middle')
         .attr('fill', '#4C4646')
@@ -952,6 +953,28 @@ function handleResize() {
           .attr('stroke-width', 1)
           .attr('stroke-opacity', 0.3)
           .attr('pointer-events', 'none');
+      }
+    });
+  }
+  
+  // Update node radii if viewport size changed (e.g., phone rotation)
+  if (nodeGroups) {
+    nodeGroups.each(function(d) {
+      const radius = getNodeRadius(d.scale);
+      const group = d3.select(this);
+      group.select('circle').attr('r', radius);
+      group.select('image')
+        .attr('x', -radius)
+        .attr('y', -radius)
+        .attr('width', radius * 2)
+        .attr('height', radius * 2);
+      group.select('text.node-label').attr('dy', radius + 14);
+      // Update clipPath if it exists
+      if (d.clipId) {
+        const clipPath = svg.select(`#${d.clipId} circle`);
+        if (!clipPath.empty()) {
+          clipPath.attr('r', radius);
+        }
       }
     });
   }
