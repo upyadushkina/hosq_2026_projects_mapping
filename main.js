@@ -231,26 +231,25 @@ function initVisualization(data) {
       clipPath.append('circle')
         .attr('cx', 0)
         .attr('cy', 0)
-        .attr('r', 5 + node.scale * 5);
+        .attr('r', 5 + node.scale * 3.7);
     }
   });
   
-  // Create circles for nodes (background/fill)
+  // Create circles for nodes (background/fill) - no stroke
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
-    .attr('r', d => 5 + d.scale * 5)
+    .attr('r', d => 5 + d.scale * 3.7)
     .attr('fill', d => d.color)
-    .attr('stroke', '#262123')
-    .attr('stroke-width', 2);
+    .attr('stroke', 'none');
 
   // Add images inside circles for nodes with photos
   nodeGroups.filter(d => d.clipId).append('image')
     .attr('href', d => d.photoLink)
     .attr('xlink:href', d => d.photoLink)
-    .attr('x', d => -(5 + d.scale * 5))
-    .attr('y', d => -(5 + d.scale * 5))
-    .attr('width', d => (5 + d.scale * 5) * 2)
-    .attr('height', d => (5 + d.scale * 5) * 2)
+    .attr('x', d => -(5 + d.scale * 3.7))
+    .attr('y', d => -(5 + d.scale * 3.7))
+    .attr('width', d => (5 + d.scale * 3.7) * 2)
+    .attr('height', d => (5 + d.scale * 3.7) * 2)
     .attr('preserveAspectRatio', 'xMidYMid slice')
     .attr('clip-path', d => `url(#${d.clipId})`);
   
@@ -260,7 +259,7 @@ function initVisualization(data) {
     .text(d => d.name)
     .attr('font-size', 10)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => (5 + d.scale * 5) + 14) // Position below the circle
+    .attr('dy', d => (5 + d.scale * 3.7) + 14) // Position below the circle
     .attr('fill', '#E8DED3')
     .attr('pointer-events', 'none')
     .style('font-family', 'Lexend-Medium');
@@ -301,15 +300,23 @@ function initVisualization(data) {
     const popup = document.getElementById('popup');
     if (!popup || popup.style.display !== 'block') return;
     
-    // Don't close if clicking inside the popup
-    if (popup.contains(event.target)) {
+    // Don't close if clicking inside the popup or any of its children
+    if (popup.contains(event.target) || event.target.closest('.popup')) {
       return;
     }
     
     // Don't close if clicking on a node
     if (event.target.closest('.node-group') || 
         event.target.classList.contains('node') ||
-        event.target.closest('circle')) {
+        event.target.closest('circle') ||
+        event.target.closest('image')) {
+      return;
+    }
+    
+    // Don't close if clicking on buttons
+    if (event.target.closest('.top-btn') || 
+        event.target.closest('#filters-popup') ||
+        event.target.closest('#filters-backdrop')) {
       return;
     }
     
@@ -351,24 +358,35 @@ function handleNodeHover(event, d) {
   
   hoveredNode = d;
   
-  // Highlight edges connected to this node
-  linkElements
-    .classed('highlighted', l => l.source.id === d.id || l.target.id === d.id)
-    .attr('stroke-opacity', l => 
-      (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.2
-    );
-  
-  // Reduce opacity of nodes with different type (both circles and labels)
-  nodeGroups.select('circle').attr('opacity', n => {
-    if (n.id === d.id) return 1;
-    if (n.type === d.type) return 1;
-    return 0.15; // Stronger opacity reduction for non-matching types
+  // Get connected neighbor IDs
+  const connectedIds = new Set([d.id]);
+  linkElements.each(function(l) {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+    if (sourceId === d.id) connectedIds.add(targetId);
+    if (targetId === d.id) connectedIds.add(sourceId);
   });
   
-  nodeGroups.select('text').attr('opacity', n => {
+  // Highlight edges connected to this node
+  linkElements
+    .classed('highlighted', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return sourceId === d.id || targetId === d.id;
+    })
+    .attr('stroke-opacity', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
+    });
+  
+  // Reduce opacity of nodes with different type, but keep connected neighbors fully opaque
+  // Apply opacity to the entire node group (circle, image, text)
+  nodeGroups.attr('opacity', n => {
     if (n.id === d.id) return 1;
+    if (connectedIds.has(n.id)) return 1; // Keep connected neighbors fully opaque
     if (n.type === d.type) return 1;
-    return 0.15; // Apply same opacity reduction to labels
+    return 0.15; // Stronger opacity reduction for non-matching types
   });
   
   // Show popup on hover (only if no node is clicked, or if hovering the clicked node)
@@ -413,6 +431,36 @@ function handleNodeMouseOut(event, d) {
 function handleNodeClick(event, d) {
   event.stopPropagation();
   clickedNode = d;
+  
+  // Get connected neighbor IDs
+  const connectedIds = new Set([d.id]);
+  linkElements.each(function(l) {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+    if (sourceId === d.id) connectedIds.add(targetId);
+    if (targetId === d.id) connectedIds.add(sourceId);
+  });
+  
+  // Highlight edges connected to this node
+  linkElements
+    .classed('highlighted', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return sourceId === d.id || targetId === d.id;
+    })
+    .attr('stroke-opacity', l => {
+      const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+      const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+      return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
+    });
+  
+  // Keep clicked node and connected neighbors fully opaque
+  nodeGroups.attr('opacity', n => {
+    if (n.id === d.id) return 1;
+    if (connectedIds.has(n.id)) return 1; // Keep connected neighbors fully opaque
+    return 0.15; // Dim all other nodes
+  });
+  
   showPopup(d);
 }
 
@@ -461,15 +509,31 @@ function showPopup(node) {
   popup.innerHTML = html;
   popup.style.display = 'block';
   
+  // Add click handlers to popup tags - stop propagation to prevent closing popup
   popup.querySelectorAll('.popup-tag').forEach(tagEl => {
     tagEl.addEventListener('click', (event) => {
       event.stopPropagation();
+      event.preventDefault();
       const fieldValue = tagEl.getAttribute('data-field');
       if (!fieldValue) return;
       toggleFieldFilter(fieldValue);
       const isActiveNow = selectedFields.has(fieldValue);
       tagEl.classList.toggle('active', isActiveNow);
     });
+  });
+  
+  // Add click handler to popup button - stop propagation to prevent closing popup
+  const popupButton = popup.querySelector('.popup-button');
+  if (popupButton) {
+    popupButton.addEventListener('click', (event) => {
+      event.stopPropagation();
+      // Let the link navigate normally
+    });
+  }
+  
+  // Stop propagation on all clicks inside popup
+  popup.addEventListener('click', (event) => {
+    event.stopPropagation();
   });
   
   // Position popup near the node
@@ -587,30 +651,8 @@ function setFieldFilterState(field, shouldBeActive, options = {}) {
 function applyFilters() {
   if (!nodeGroups) return;
   
-  // Apply opacity to both circles and labels
-  nodeGroups.select('circle').attr('opacity', d => {
-    // Check type filter
-    if (selectedTypes.size > 0 && !selectedTypes.has(d.type)) {
-      return 0.15;
-    }
-    
-    // Check fields filter
-    if (selectedFields.size > 0) {
-      const hasMatchingField = d.fields.some(field => selectedFields.has(field));
-      if (!hasMatchingField) {
-        return 0.15;
-      }
-    }
-    
-    // Check search query
-    if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return 0.15;
-    }
-    
-    return 1;
-  });
-  
-  nodeGroups.select('text').attr('opacity', d => {
+  // Apply opacity to the entire node group (circle, image, text) so all elements dim together
+  nodeGroups.attr('opacity', d => {
     // Check type filter
     if (selectedTypes.size > 0 && !selectedTypes.has(d.type)) {
       return 0.15;
