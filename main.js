@@ -421,6 +421,22 @@ function handleNodeHover(event, d) {
     if (targetId === d.id) connectedIds.add(sourceId);
   });
   
+  // Create a map of node opacity values
+  const nodeOpacityMap = new Map();
+  nodeGroups.each(function(n) {
+    let opacity = 1;
+    if (n.id === d.id) {
+      opacity = 1;
+    } else if (connectedIds.has(n.id)) {
+      opacity = 1; // Keep connected neighbors fully opaque
+    } else if (n.type === d.type) {
+      opacity = 1;
+    } else {
+      opacity = 0.15; // Stronger opacity reduction for non-matching types
+    }
+    nodeOpacityMap.set(n.id, opacity);
+  });
+  
   // Highlight edges connected to this node
   linkElements
     .classed('highlighted', l => {
@@ -431,17 +447,19 @@ function handleNodeHover(event, d) {
     .attr('stroke-opacity', l => {
       const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
       const targetId = typeof l.target === 'object' ? l.target.id : l.target;
-      return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
+      const isConnected = sourceId === d.id || targetId === d.id;
+      if (isConnected) {
+        return 1; // Fully visible for connected edges
+      }
+      // For non-connected edges, dim if either node is dimmed
+      const sourceOpacity = nodeOpacityMap.get(sourceId) || 1;
+      const targetOpacity = nodeOpacityMap.get(targetId) || 1;
+      return Math.min(sourceOpacity, targetOpacity);
     });
   
   // Reduce opacity of nodes with different type, but keep connected neighbors fully opaque
   // Apply opacity to the entire node group (circle, image, text)
-  nodeGroups.attr('opacity', n => {
-    if (n.id === d.id) return 1;
-    if (connectedIds.has(n.id)) return 1; // Keep connected neighbors fully opaque
-    if (n.type === d.type) return 1;
-    return 0.15; // Stronger opacity reduction for non-matching types
-  });
+  nodeGroups.attr('opacity', n => nodeOpacityMap.get(n.id) || 1);
   
   // Show popup on hover (only if no node is clicked, or if hovering the clicked node)
   if (!clickedNode || clickedNode.id === d.id) {
@@ -495,6 +513,20 @@ function handleNodeClick(event, d) {
     if (targetId === d.id) connectedIds.add(sourceId);
   });
   
+  // Create a map of node opacity values
+  const nodeOpacityMap = new Map();
+  nodeGroups.each(function(n) {
+    let opacity = 1;
+    if (n.id === d.id) {
+      opacity = 1;
+    } else if (connectedIds.has(n.id)) {
+      opacity = 1; // Keep connected neighbors fully opaque
+    } else {
+      opacity = 0.15; // Dim all other nodes
+    }
+    nodeOpacityMap.set(n.id, opacity);
+  });
+  
   // Highlight edges connected to this node
   linkElements
     .classed('highlighted', l => {
@@ -505,15 +537,18 @@ function handleNodeClick(event, d) {
     .attr('stroke-opacity', l => {
       const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
       const targetId = typeof l.target === 'object' ? l.target.id : l.target;
-      return (sourceId === d.id || targetId === d.id) ? 1 : 0.2;
+      const isConnected = sourceId === d.id || targetId === d.id;
+      if (isConnected) {
+        return 1; // Fully visible for connected edges
+      }
+      // For non-connected edges, dim if either node is dimmed
+      const sourceOpacity = nodeOpacityMap.get(sourceId) || 1;
+      const targetOpacity = nodeOpacityMap.get(targetId) || 1;
+      return Math.min(sourceOpacity, targetOpacity);
     });
   
   // Keep clicked node and connected neighbors fully opaque
-  nodeGroups.attr('opacity', n => {
-    if (n.id === d.id) return 1;
-    if (connectedIds.has(n.id)) return 1; // Keep connected neighbors fully opaque
-    return 0.15; // Dim all other nodes
-  });
+  nodeGroups.attr('opacity', n => nodeOpacityMap.get(n.id) || 1);
   
   showPopup(d);
 }
@@ -742,29 +777,41 @@ function setFieldFilterState(field, shouldBeActive, options = {}) {
  * Apply filters to nodes
  */
 function applyFilters() {
-  if (!nodeGroups) return;
+  if (!nodeGroups || !linkElements) return;
   
-  // Apply opacity to the entire node group (circle, image, text) so all elements dim together
-  nodeGroups.attr('opacity', d => {
+  // Create a map of node opacity values
+  const nodeOpacityMap = new Map();
+  nodeGroups.each(function(d) {
+    let opacity = 1;
     // Check type filter
     if (selectedTypes.size > 0 && !selectedTypes.has(d.type)) {
-      return 0.15;
+      opacity = 0.15;
     }
-    
     // Check fields filter
-    if (selectedFields.size > 0) {
+    else if (selectedFields.size > 0) {
       const hasMatchingField = d.fields.some(field => selectedFields.has(field));
       if (!hasMatchingField) {
-        return 0.15;
+        opacity = 0.15;
       }
     }
-    
     // Check search query
-    if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return 0.15;
+    else if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      opacity = 0.15;
     }
-    
-    return 1;
+    nodeOpacityMap.set(d.id, opacity);
+  });
+  
+  // Apply opacity to the entire node group (circle, image, text) so all elements dim together
+  nodeGroups.attr('opacity', d => nodeOpacityMap.get(d.id) || 1);
+  
+  // Apply opacity to edges - dim if either source or target node is dimmed
+  linkElements.attr('stroke-opacity', l => {
+    const sourceId = typeof l.source === 'object' ? l.source.id : l.source;
+    const targetId = typeof l.target === 'object' ? l.target.id : l.target;
+    const sourceOpacity = nodeOpacityMap.get(sourceId) || 1;
+    const targetOpacity = nodeOpacityMap.get(targetId) || 1;
+    // If either node is dimmed, dim the edge
+    return Math.min(sourceOpacity, targetOpacity);
   });
 }
 
