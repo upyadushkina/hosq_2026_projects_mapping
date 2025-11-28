@@ -9,12 +9,22 @@ let nodeGroups = null;
 let linkElements = null;
 let selectedTypes = new Set();
 let selectedFields = new Set();
+const fieldFilterElements = new Map();
 let searchQuery = '';
 let clickedNode = null; // Track clicked node to keep popup visible
 let hoveredNode = null; // Track hovered node for popup updates
 
 // Schedule order for left-to-right positioning
 const SCHEDULE_ORDER = ['Winter', 'Spring', 'Summer', 'Fall'];
+
+function escapeHtml(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 /**
  * Load and parse CSV data
@@ -426,7 +436,10 @@ function showPopup(node) {
   if (node.fields && node.fields.length > 0) {
     html += `<div class="popup-tags">`;
     node.fields.forEach(field => {
-      html += `<span class="popup-tag">${field}</span>`;
+      const safeField = escapeHtml(field);
+      const isActiveField = selectedFields.has(field);
+      const activeClass = isActiveField ? ' active' : '';
+      html += `<button type="button" class="popup-tag${activeClass}" data-field="${safeField}">${safeField}</button>`;
     });
     html += `</div>`;
   }
@@ -438,6 +451,17 @@ function showPopup(node) {
   
   popup.innerHTML = html;
   popup.style.display = 'block';
+  
+  popup.querySelectorAll('.popup-tag').forEach(tagEl => {
+    tagEl.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const fieldValue = tagEl.getAttribute('data-field');
+      if (!fieldValue) return;
+      toggleFieldFilter(fieldValue);
+      const isActiveNow = selectedFields.has(fieldValue);
+      tagEl.classList.toggle('active', isActiveNow);
+    });
+  });
   
   // Position popup near the node
   updatePopupPosition(node);
@@ -507,24 +531,45 @@ function buildFilters() {
   // Build fields filters
   const fieldsContainer = d3.select('#fields-filters');
   fieldsContainer.selectAll('*').remove();
+  fieldFilterElements.clear();
   
   Array.from(allFields).sort().forEach(field => {
     const tag = fieldsContainer.append('div')
       .attr('class', 'filter-tag')
       .text(field)
-      .on('click', function() {
-        const isActive = d3.select(this).classed('active');
-        d3.select(this).classed('active', !isActive);
-        
-        if (isActive) {
-          selectedFields.delete(field);
-        } else {
-          selectedFields.add(field);
-        }
-        
-        applyFilters();
-      });
+      .classed('active', selectedFields.has(field))
+      .attr('data-field-filter', field)
+      .on('click', () => toggleFieldFilter(field));
+    
+    fieldFilterElements.set(field, tag);
   });
+}
+
+/**
+ * Toggle a field filter from either sidebar or popup
+ */
+function toggleFieldFilter(field) {
+  const shouldBecomeActive = !selectedFields.has(field);
+  setFieldFilterState(field, shouldBecomeActive);
+}
+
+/**
+ * Set a field filter to a specific active state
+ */
+function setFieldFilterState(field, shouldBeActive, options = {}) {
+  const { apply = true } = options;
+  const tag = fieldFilterElements.get(field);
+  if (tag) {
+    tag.classed('active', shouldBeActive);
+  }
+  if (shouldBeActive) {
+    selectedFields.add(field);
+  } else {
+    selectedFields.delete(field);
+  }
+  if (apply) {
+    applyFilters();
+  }
 }
 
 /**
