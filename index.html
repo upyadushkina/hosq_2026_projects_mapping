@@ -13,10 +13,28 @@
   </header>
 
   <div class="layout">
-    <!-- Left Sidebar: Filters -->
-    <aside class="sidebar" id="sidebar">
-      <h2>Filters</h2>
+    <!-- Main Visualization Area -->
+    <main class="content">
+      <!-- Filters Button -->
+      <button id="filters-btn" class="filters-btn">filters</button>
       
+      <!-- Fullscreen Button -->
+      <button id="fullscreen-btn" class="fullscreen-btn">full screen</button>
+      
+      <svg id="visualization"></svg>
+      <!-- Pop-up Card -->
+      <div id="popup" class="popup"></div>
+    </main>
+  </div>
+
+  <!-- Filters Popup -->
+  <div id="filters-popup" class="filters-popup">
+    <div class="filters-popup-header">
+      <h2>Filters</h2>
+      <button id="close-filters" class="close-filters-btn">&times;</button>
+    </div>
+    
+    <div class="filters-popup-content">
       <!-- Type Filter -->
       <div class="filter-group">
         <h3>Type</h3>
@@ -37,14 +55,7 @@
 
       <!-- Reset Button -->
       <button id="reset-filters" class="reset-btn">Reset filters</button>
-    </aside>
-
-    <!-- Main Visualization Area -->
-    <main class="content">
-      <svg id="visualization"></svg>
-      <!-- Pop-up Card -->
-      <div id="popup" class="popup"></div>
-    </main>
+    </div>
   </div>
 
   <script src="main.js"></script>
