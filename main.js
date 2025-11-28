@@ -149,11 +149,11 @@ function getNodeXPosition(node, scheduleScale) {
 }
 
 /**
- * Get phone view scale factor (0.6 for phone, 1.0 for desktop)
+ * Get phone view scale factor (0.8 for phone, 1.0 for desktop)
  */
 function getPhoneViewScale() {
   const isPhoneView = window.innerWidth <= 768;
-  return isPhoneView ? 0.6 : 1.0;
+  return isPhoneView ? 0.8 : 1.0;
 }
 
 /**
