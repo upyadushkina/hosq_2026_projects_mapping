@@ -287,6 +287,15 @@ function initVisualization(data) {
   
   // Handle click on background to close popup
   svg.on('click', function(event) {
+    // Check if click originated from popup
+    const popup = document.getElementById('popup');
+    if (popup && popup.style.display === 'block') {
+      const path = event.composedPath ? event.composedPath() : (event.path || []);
+      if (path.some(el => el === popup || (el && el.classList && el.classList.contains('popup')))) {
+        return;
+      }
+    }
+    
     // Only close if clicking on background (not on a node or popup)
     if (event.target === svg.node() || event.target === g.node()) {
       clickedNode = null;
@@ -296,28 +305,64 @@ function initVisualization(data) {
   });
   
   // Handle clicks/touches outside popup to close it (for mobile and desktop)
+  // Use a single handler that checks the event path more carefully
   const handleOutsideClick = function(event) {
     const popup = document.getElementById('popup');
     if (!popup || popup.style.display !== 'block') return;
     
-    // Don't close if clicking/touching inside the popup or any of its children
-    if (popup.contains(event.target) || event.target.closest('.popup')) {
+    // Check event path/composedPath first - this is most reliable for mobile
+    const path = event.composedPath ? event.composedPath() : (event.path || []);
+    
+    // If any element in the path is the popup or inside it, don't close
+    for (let i = 0; i < path.length; i++) {
+      const el = path[i];
+      if (!el) continue;
+      
+      // Check if it's the popup itself
+      if (el === popup || el.id === 'popup') {
+        return;
+      }
+      
+      // Check if it has popup classes
+      if (el.classList) {
+        if (el.classList.contains('popup') || 
+            el.classList.contains('popup-tag') || 
+            el.classList.contains('popup-button') ||
+            el.classList.contains('popup-name') ||
+            el.classList.contains('popup-type') ||
+            el.classList.contains('popup-description') ||
+            el.classList.contains('popup-tags') ||
+            el.classList.contains('popup-photo')) {
+          return;
+        }
+      }
+      
+      // Check if it's inside the popup
+      if (el.nodeType === 1 && popup.contains(el)) {
+        return;
+      }
+    }
+    
+    const target = event.target;
+    
+    // Double-check with contains
+    if (popup.contains(target)) {
       return;
     }
     
     // Don't close if clicking on a node
-    if (event.target.closest('.node-group') || 
-        event.target.classList.contains('node') ||
-        event.target.closest('circle') ||
-        event.target.closest('image') ||
-        event.target.closest('text')) {
+    if (target.closest('.node-group') || 
+        target.classList.contains('node') ||
+        target.closest('circle') ||
+        target.closest('image') ||
+        target.closest('text')) {
       return;
     }
     
     // Don't close if clicking on buttons
-    if (event.target.closest('.top-btn') || 
-        event.target.closest('#filters-popup') ||
-        event.target.closest('#filters-backdrop')) {
+    if (target.closest('.top-btn') || 
+        target.closest('#filters-popup') ||
+        target.closest('#filters-backdrop')) {
       return;
     }
     
@@ -327,8 +372,13 @@ function initVisualization(data) {
     hidePopup();
   };
   
-  document.addEventListener('click', handleOutsideClick);
-  document.addEventListener('touchend', handleOutsideClick);
+  // Use capture phase and handle both click and touch
+  // Use a small delay for touchend to allow popup handlers to run first
+  document.addEventListener('click', handleOutsideClick, true);
+  document.addEventListener('touchend', function(e) {
+    // Small delay to let popup handlers process first
+    setTimeout(() => handleOutsideClick(e), 10);
+  }, true);
 }
 
 /**
@@ -515,40 +565,69 @@ function showPopup(node) {
   popup.innerHTML = html;
   popup.style.display = 'block';
   
-  // Stop propagation on all pointer events inside popup (for mobile touch support)
-  const stopPropagationHandler = (event) => {
+  // Store touch timestamp to prevent synthetic clicks from closing popup
+  let lastTouchTime = 0;
+  
+  // Handle touchstart - just stop propagation and record time
+  const popupTouchStartHandler = (event) => {
     event.stopPropagation();
+    lastTouchTime = Date.now();
   };
   
-  popup.addEventListener('click', stopPropagationHandler, true);
-  popup.addEventListener('touchend', stopPropagationHandler, true);
-  popup.addEventListener('touchstart', stopPropagationHandler, true);
-  
-  // Add click/touch handlers to popup tags - stop propagation to prevent closing popup
-  popup.querySelectorAll('.popup-tag').forEach(tagEl => {
-    const tagClickHandler = (event) => {
-      event.stopPropagation();
+  // Handle touchend - process the action
+  const popupTouchEndHandler = (event) => {
+    event.stopPropagation();
+    lastTouchTime = Date.now();
+    
+    const target = event.target;
+    
+    // Handle popup tag touches
+    if (target.classList.contains('popup-tag')) {
       event.preventDefault();
-      const fieldValue = tagEl.getAttribute('data-field');
-      if (!fieldValue) return;
-      toggleFieldFilter(fieldValue);
-      const isActiveNow = selectedFields.has(fieldValue);
-      tagEl.classList.toggle('active', isActiveNow);
-    };
-    tagEl.addEventListener('click', tagClickHandler);
-    tagEl.addEventListener('touchend', tagClickHandler);
-  });
+      const fieldValue = target.getAttribute('data-field');
+      if (fieldValue) {
+        toggleFieldFilter(fieldValue);
+        const isActiveNow = selectedFields.has(fieldValue);
+        target.classList.toggle('active', isActiveNow);
+      }
+    }
+    // For popup button, don't prevent default - let link work
+  };
   
-  // Add click/touch handler to popup button - stop propagation to prevent closing popup
-  const popupButton = popup.querySelector('.popup-button');
-  if (popupButton) {
-    const buttonClickHandler = (event) => {
+  // Handle click events on popup
+  const popupClickHandler = (event) => {
+    // On mobile, ignore synthetic clicks that happen shortly after touch
+    const timeSinceTouch = Date.now() - lastTouchTime;
+    if (timeSinceTouch < 500) {
+      if (event.target.classList.contains('popup-tag')) {
+        event.preventDefault();
+      }
       event.stopPropagation();
-      // Let the link navigate normally - don't prevent default
-    };
-    popupButton.addEventListener('click', buttonClickHandler);
-    popupButton.addEventListener('touchend', buttonClickHandler);
-  }
+      return;
+    }
+    
+    event.stopPropagation();
+    
+    const target = event.target;
+    
+    // Handle popup tag clicks
+    if (target.classList.contains('popup-tag')) {
+      event.preventDefault();
+      const fieldValue = target.getAttribute('data-field');
+      if (fieldValue) {
+        toggleFieldFilter(fieldValue);
+        const isActiveNow = selectedFields.has(fieldValue);
+        target.classList.toggle('active', isActiveNow);
+      }
+    }
+    // For popup button, let link navigate normally
+  };
+  
+  // Add handlers with capture phase to catch events early
+  popup.addEventListener('touchstart', popupTouchStartHandler, { capture: true, passive: false });
+  popup.addEventListener('touchend', popupTouchEndHandler, { capture: true, passive: false });
+  popup.addEventListener('click', popupClickHandler, { capture: true });
+  popup.addEventListener('mousedown', (e) => e.stopPropagation(), { capture: true });
   
   // Position popup near the node
   updatePopupPosition(node);
