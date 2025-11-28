@@ -231,14 +231,14 @@ function initVisualization(data) {
       clipPath.append('circle')
         .attr('cx', 0)
         .attr('cy', 0)
-        .attr('r', 5 + node.scale * 3);
+        .attr('r', 5 + node.scale * 5);
     }
   });
   
   // Create circles for nodes (background/fill)
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
-    .attr('r', d => 5 + d.scale * 3)
+    .attr('r', d => 5 + d.scale * 5)
     .attr('fill', d => d.color)
     .attr('stroke', '#262123')
     .attr('stroke-width', 2);
@@ -247,23 +247,26 @@ function initVisualization(data) {
   nodeGroups.filter(d => d.clipId).append('image')
     .attr('href', d => d.photoLink)
     .attr('xlink:href', d => d.photoLink)
-    .attr('x', d => -(5 + d.scale * 3))
-    .attr('y', d => -(5 + d.scale * 3))
-    .attr('width', d => (5 + d.scale * 3) * 2)
-    .attr('height', d => (5 + d.scale * 3) * 2)
+    .attr('x', d => -(5 + d.scale * 5))
+    .attr('y', d => -(5 + d.scale * 5))
+    .attr('width', d => (5 + d.scale * 5) * 2)
+    .attr('height', d => (5 + d.scale * 5) * 2)
     .attr('preserveAspectRatio', 'xMidYMid slice')
     .attr('clip-path', d => `url(#${d.clipId})`);
   
   // Add labels (project names) to all nodes
-  nodeGroups.append('text')
+  const nodeLabels = nodeGroups.append('text')
     .attr('class', 'node-label')
     .text(d => d.name)
     .attr('font-size', 10)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => (5 + d.scale * 3) + 14) // Position below the circle
+    .attr('dy', d => (5 + d.scale * 5) + 14) // Position below the circle
     .attr('fill', '#E8DED3')
     .attr('pointer-events', 'none')
     .style('font-family', 'Lexend-Medium');
+  
+  // Store labels reference for opacity updates
+  window.nodeLabels = nodeLabels;
   
   // Update positions on simulation tick
   simulation.on('tick', () => {
@@ -355,11 +358,17 @@ function handleNodeHover(event, d) {
       (l.source.id === d.id || l.target.id === d.id) ? 1 : 0.2
     );
   
-  // Reduce opacity of nodes with different type
+  // Reduce opacity of nodes with different type (both circles and labels)
   nodeGroups.select('circle').attr('opacity', n => {
     if (n.id === d.id) return 1;
     if (n.type === d.type) return 1;
-    return 0.25; // Reduced opacity for non-matching types
+    return 0.15; // Stronger opacity reduction for non-matching types
+  });
+  
+  nodeGroups.select('text').attr('opacity', n => {
+    if (n.id === d.id) return 1;
+    if (n.type === d.type) return 1;
+    return 0.15; // Apply same opacity reduction to labels
   });
   
   // Show popup on hover (only if no node is clicked, or if hovering the clicked node)
@@ -578,23 +587,46 @@ function setFieldFilterState(field, shouldBeActive, options = {}) {
 function applyFilters() {
   if (!nodeGroups) return;
   
+  // Apply opacity to both circles and labels
   nodeGroups.select('circle').attr('opacity', d => {
     // Check type filter
     if (selectedTypes.size > 0 && !selectedTypes.has(d.type)) {
-      return 0.2;
+      return 0.15;
     }
     
     // Check fields filter
     if (selectedFields.size > 0) {
       const hasMatchingField = d.fields.some(field => selectedFields.has(field));
       if (!hasMatchingField) {
-        return 0.2;
+        return 0.15;
       }
     }
     
     // Check search query
     if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return 0.2;
+      return 0.15;
+    }
+    
+    return 1;
+  });
+  
+  nodeGroups.select('text').attr('opacity', d => {
+    // Check type filter
+    if (selectedTypes.size > 0 && !selectedTypes.has(d.type)) {
+      return 0.15;
+    }
+    
+    // Check fields filter
+    if (selectedFields.size > 0) {
+      const hasMatchingField = d.fields.some(field => selectedFields.has(field));
+      if (!hasMatchingField) {
+        return 0.15;
+      }
+    }
+    
+    // Check search query
+    if (searchQuery && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return 0.15;
     }
     
     return 1;
@@ -663,6 +695,49 @@ async function init() {
   });
   
   document.getElementById('reset-filters').addEventListener('click', resetFilters);
+  
+  // Filters popup toggle
+  const filtersBtn = document.getElementById('filters-btn');
+  const filtersPopup = document.getElementById('filters-popup');
+  const closeFiltersBtn = document.getElementById('close-filters');
+  
+  filtersBtn.addEventListener('click', () => {
+    filtersPopup.classList.add('active');
+  });
+  
+  closeFiltersBtn.addEventListener('click', () => {
+    filtersPopup.classList.remove('active');
+  });
+  
+  // Close filters popup when clicking outside
+  document.addEventListener('click', (e) => {
+    if (filtersPopup.classList.contains('active') && 
+        !filtersPopup.contains(e.target) && 
+        e.target !== filtersBtn) {
+      filtersPopup.classList.remove('active');
+    }
+  });
+  
+  // Fullscreen toggle
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+      fullscreenBtn.textContent = 'exit full screen';
+    } else {
+      document.exitFullscreen();
+      fullscreenBtn.textContent = 'full screen';
+    }
+  });
+  
+  // Update fullscreen button text when exiting fullscreen via ESC
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+      fullscreenBtn.textContent = 'full screen';
+    }
+  });
   
   // Handle window resize
   window.addEventListener('resize', handleResize);
