@@ -149,15 +149,28 @@ function getNodeXPosition(node, scheduleScale) {
 }
 
 /**
+ * Get phone view scale factor (0.6 for phone, 1.0 for desktop)
+ */
+function getPhoneViewScale() {
+  const isPhoneView = window.innerWidth <= 768;
+  return isPhoneView ? 0.6 : 1.0;
+}
+
+/**
  * Calculate node radius based on scale value
  * Uses different formula for phone view (max-width: 768px)
+ * Also applies 0.6 scale factor for phone view
  */
 function getNodeRadius(scale) {
   const isPhoneView = window.innerWidth <= 768;
+  const phoneScale = getPhoneViewScale();
+  let radius;
   if (isPhoneView) {
-    return 10 + scale * 2;
+    radius = 10 + scale * 2;
+  } else {
+    radius = 5 + scale * 3.7;
   }
-  return 5 + scale * 3.7;
+  return radius * phoneScale;
 }
 
 /**
@@ -227,12 +240,13 @@ function initVisualization(data) {
       .attr('stroke', 'none');
     
     // Add label at the top center of each column
+    const phoneScale = getPhoneViewScale();
     backgroundColumns.append('text')
       .attr('x', columnCenterX)
       .attr('y', 20)
       .attr('text-anchor', 'middle')
       .attr('fill', '#4C4646')
-      .attr('font-size', '14px')
+      .attr('font-size', `${14 * phoneScale}px`)
       .attr('font-family', 'Lexend-Medium')
       .attr('pointer-events', 'none')
       .text(season);
@@ -245,7 +259,7 @@ function initVisualization(data) {
         .attr('x2', nextX)
         .attr('y2', height)
         .attr('stroke', '#4C4646')
-        .attr('stroke-width', 1)
+        .attr('stroke-width', 1 * phoneScale)
         .attr('stroke-opacity', 0.3)
         .attr('pointer-events', 'none');
     }
@@ -314,12 +328,13 @@ function initVisualization(data) {
     .attr('clip-path', d => `url(#${d.clipId})`);
   
   // Add labels (project names) to all nodes
+  const phoneScale = getPhoneViewScale();
   const nodeLabels = nodeGroups.append('text')
     .attr('class', 'node-label')
     .text(d => d.name)
-    .attr('font-size', 10)
+    .attr('font-size', 10 * phoneScale)
     .attr('text-anchor', 'middle')
-    .attr('dy', d => getNodeRadius(d.scale) + 14) // Position below the circle
+    .attr('dy', d => getNodeRadius(d.scale) + 14 * phoneScale) // Position below the circle
     .attr('fill', '#E8DED3')
     .attr('pointer-events', 'none')
     .style('font-family', 'Lexend-Medium');
@@ -932,12 +947,13 @@ function handleResize() {
         .attr('stroke', 'none');
       
       // Add label at the top center of each column
+      const phoneScale = getPhoneViewScale();
       backgroundColumns.append('text')
         .attr('x', columnCenterX)
         .attr('y', 20)
         .attr('text-anchor', 'middle')
         .attr('fill', '#4C4646')
-        .attr('font-size', '14px')
+        .attr('font-size', `${14 * phoneScale}px`)
         .attr('font-family', 'Lexend-Medium')
         .attr('pointer-events', 'none')
         .text(season);
@@ -950,7 +966,7 @@ function handleResize() {
           .attr('x2', nextX)
           .attr('y2', height)
           .attr('stroke', '#4C4646')
-          .attr('stroke-width', 1)
+          .attr('stroke-width', 1 * phoneScale)
           .attr('stroke-opacity', 0.3)
           .attr('pointer-events', 'none');
       }
@@ -959,6 +975,7 @@ function handleResize() {
   
   // Update node radii if viewport size changed (e.g., phone rotation)
   if (nodeGroups) {
+    const phoneScale = getPhoneViewScale();
     nodeGroups.each(function(d) {
       const radius = getNodeRadius(d.scale);
       const group = d3.select(this);
@@ -968,7 +985,9 @@ function handleResize() {
         .attr('y', -radius)
         .attr('width', radius * 2)
         .attr('height', radius * 2);
-      group.select('text.node-label').attr('dy', radius + 14);
+      group.select('text.node-label')
+        .attr('dy', radius + 14 * phoneScale)
+        .attr('font-size', 10 * phoneScale);
       // Update clipPath if it exists
       if (d.clipId) {
         const clipPath = svg.select(`#${d.clipId} circle`);
