@@ -7,6 +7,7 @@ let g = null;
 let nodeElements = null;
 let nodeGroups = null;
 let linkElements = null;
+let backgroundColumns = null;
 let selectedTypes = new Set();
 let selectedFields = new Set();
 const fieldFilterElements = new Map();
@@ -190,6 +191,59 @@ function initVisualization(data) {
   
   // Create defs for clipPaths
   const defs = svg.append('defs');
+  
+  // Create background columns for schedule
+  backgroundColumns = g.append('g')
+    .attr('class', 'background-columns');
+  
+  // Divide the full width into 4 equal columns
+  const columnWidth = width / SCHEDULE_ORDER.length;
+  
+  // Create 4 columns with separators and labels
+  SCHEDULE_ORDER.forEach((season, i) => {
+    const x = i * columnWidth;
+    const nextX = (i + 1) * columnWidth;
+    
+    // Position label at the schedule scale position (where nodes are actually placed)
+    // but center it within the column
+    const scheduleX = scheduleScale(season);
+    const columnCenterX = x + columnWidth / 2;
+    // Use column center for label, but align with schedule position if it's within the column
+    const labelX = scheduleX >= x && scheduleX <= nextX ? scheduleX : columnCenterX;
+    
+    // Create column rectangle (subtle background, optional)
+    backgroundColumns.append('rect')
+      .attr('x', x)
+      .attr('y', 0)
+      .attr('width', columnWidth)
+      .attr('height', height)
+      .attr('fill', 'none')
+      .attr('stroke', 'none');
+    
+    // Add label at the top center of each column
+    backgroundColumns.append('text')
+      .attr('x', labelX)
+      .attr('y', 20)
+      .attr('text-anchor', 'middle')
+      .attr('fill', '#4C4646')
+      .attr('font-size', '14px')
+      .attr('font-family', 'Lexend-Medium')
+      .attr('pointer-events', 'none')
+      .text(season);
+    
+    // Add vertical separator line (except for the last column)
+    if (i < SCHEDULE_ORDER.length - 1) {
+      backgroundColumns.append('line')
+        .attr('x1', nextX)
+        .attr('y1', 0)
+        .attr('x2', nextX)
+        .attr('y2', height)
+        .attr('stroke', '#4C4646')
+        .attr('stroke-width', 1)
+        .attr('stroke-opacity', 0.3)
+        .attr('pointer-events', 'none');
+    }
+  });
   
   // Draw links
   linkElements = g.append('g')
@@ -848,6 +902,59 @@ function handleResize() {
   simulation.force('x', d3.forceX(d => getNodeXPosition(d, scheduleScale)).strength(0.5));
   simulation.force('center', d3.forceCenter(width / 2, height / 2));
   simulation.force('y', d3.forceY(height / 2).strength(0.1));
+  
+  // Update background columns
+  if (backgroundColumns) {
+    backgroundColumns.selectAll('*').remove();
+    
+    // Divide the full width into 4 equal columns
+    const columnWidth = width / SCHEDULE_ORDER.length;
+    
+    // Create 4 columns with separators and labels
+    SCHEDULE_ORDER.forEach((season, i) => {
+      const x = i * columnWidth;
+      const nextX = (i + 1) * columnWidth;
+      
+      // Position label at the schedule scale position (where nodes are actually placed)
+      const scheduleX = scheduleScale(season);
+      const columnCenterX = x + columnWidth / 2;
+      // Use column center for label, but align with schedule position if it's within the column
+      const labelX = scheduleX >= x && scheduleX <= nextX ? scheduleX : columnCenterX;
+      
+      // Create column rectangle (subtle background, optional)
+      backgroundColumns.append('rect')
+        .attr('x', x)
+        .attr('y', 0)
+        .attr('width', columnWidth)
+        .attr('height', height)
+        .attr('fill', 'none')
+        .attr('stroke', 'none');
+      
+      // Add label at the top center of each column
+      backgroundColumns.append('text')
+        .attr('x', labelX)
+        .attr('y', 20)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#4C4646')
+        .attr('font-size', '14px')
+        .attr('font-family', 'Lexend-Medium')
+        .attr('pointer-events', 'none')
+        .text(season);
+      
+      // Add vertical separator line (except for the last column)
+      if (i < SCHEDULE_ORDER.length - 1) {
+        backgroundColumns.append('line')
+          .attr('x1', nextX)
+          .attr('y1', 0)
+          .attr('x2', nextX)
+          .attr('y2', height)
+          .attr('stroke', '#4C4646')
+          .attr('stroke-width', 1)
+          .attr('stroke-opacity', 0.3)
+          .attr('pointer-events', 'none');
+      }
+    });
+  }
   
   simulation.alpha(0.3).restart();
 }
