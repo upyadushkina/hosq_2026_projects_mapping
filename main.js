@@ -295,12 +295,12 @@ function initVisualization(data) {
     }
   });
   
-  // Handle clicks outside popup to close it (for mobile and desktop)
-  document.addEventListener('click', function(event) {
+  // Handle clicks/touches outside popup to close it (for mobile and desktop)
+  const handleOutsideClick = function(event) {
     const popup = document.getElementById('popup');
     if (!popup || popup.style.display !== 'block') return;
     
-    // Don't close if clicking inside the popup or any of its children
+    // Don't close if clicking/touching inside the popup or any of its children
     if (popup.contains(event.target) || event.target.closest('.popup')) {
       return;
     }
@@ -309,7 +309,8 @@ function initVisualization(data) {
     if (event.target.closest('.node-group') || 
         event.target.classList.contains('node') ||
         event.target.closest('circle') ||
-        event.target.closest('image')) {
+        event.target.closest('image') ||
+        event.target.closest('text')) {
       return;
     }
     
@@ -324,7 +325,10 @@ function initVisualization(data) {
     clickedNode = null;
     hoveredNode = null;
     hidePopup();
-  });
+  };
+  
+  document.addEventListener('click', handleOutsideClick);
+  document.addEventListener('touchend', handleOutsideClick);
 }
 
 /**
@@ -481,8 +485,10 @@ function showPopup(node) {
   // Project name
   html += `<div class="popup-name">${node.name}</div>`;
   
-  // Type (in smaller text, color #4C4646)
-  html += `<div class="popup-type">${node.type}</div>`;
+  // Type | Schedule (in smaller text, color #4C4646)
+  const scheduleDisplay = node.schedule && node.schedule.length > 0 ? node.schedule[0] : '';
+  const typeScheduleText = scheduleDisplay ? `${node.type} | ${scheduleDisplay}` : node.type;
+  html += `<div class="popup-type">${typeScheduleText}</div>`;
   
   // Description - always show if it exists
   if (node.description && node.description.trim() !== '') {
@@ -509,9 +515,18 @@ function showPopup(node) {
   popup.innerHTML = html;
   popup.style.display = 'block';
   
-  // Add click handlers to popup tags - stop propagation to prevent closing popup
+  // Stop propagation on all pointer events inside popup (for mobile touch support)
+  const stopPropagationHandler = (event) => {
+    event.stopPropagation();
+  };
+  
+  popup.addEventListener('click', stopPropagationHandler, true);
+  popup.addEventListener('touchend', stopPropagationHandler, true);
+  popup.addEventListener('touchstart', stopPropagationHandler, true);
+  
+  // Add click/touch handlers to popup tags - stop propagation to prevent closing popup
   popup.querySelectorAll('.popup-tag').forEach(tagEl => {
-    tagEl.addEventListener('click', (event) => {
+    const tagClickHandler = (event) => {
       event.stopPropagation();
       event.preventDefault();
       const fieldValue = tagEl.getAttribute('data-field');
@@ -519,22 +534,21 @@ function showPopup(node) {
       toggleFieldFilter(fieldValue);
       const isActiveNow = selectedFields.has(fieldValue);
       tagEl.classList.toggle('active', isActiveNow);
-    });
+    };
+    tagEl.addEventListener('click', tagClickHandler);
+    tagEl.addEventListener('touchend', tagClickHandler);
   });
   
-  // Add click handler to popup button - stop propagation to prevent closing popup
+  // Add click/touch handler to popup button - stop propagation to prevent closing popup
   const popupButton = popup.querySelector('.popup-button');
   if (popupButton) {
-    popupButton.addEventListener('click', (event) => {
+    const buttonClickHandler = (event) => {
       event.stopPropagation();
-      // Let the link navigate normally
-    });
+      // Let the link navigate normally - don't prevent default
+    };
+    popupButton.addEventListener('click', buttonClickHandler);
+    popupButton.addEventListener('touchend', buttonClickHandler);
   }
-  
-  // Stop propagation on all clicks inside popup
-  popup.addEventListener('click', (event) => {
-    event.stopPropagation();
-  });
   
   // Position popup near the node
   updatePopupPosition(node);
