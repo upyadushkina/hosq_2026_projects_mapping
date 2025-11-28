@@ -283,12 +283,15 @@ header {
   padding: 16px;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 10000;
   max-width: 280px;
   pointer-events: auto;
   display: none;
   font-family: 'Lexend-Medium', sans-serif;
   touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .popup-photo {
@@ -342,6 +345,12 @@ header {
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  display: inline-block;
+  min-height: 24px;
+  min-width: 40px;
 }
 
 .popup-tag.active {
@@ -370,6 +379,11 @@ header {
   pointer-events: auto;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  min-height: 36px;
+  min-width: 120px;
 }
 
 .popup-button:hover {
