@@ -209,27 +209,19 @@ function initVisualization(data) {
     .on('mouseout', handleNodeMouseOut)
     .on('click', handleNodeClick);
   
-  // For each node, create an SVG pattern if it has a photo
+  // For each node, create a clipPath if it has a photo
   data.nodes.forEach((node, i) => {
     if (node.photoLink && node.photoLink.trim() !== '') {
-      const patternId = `node-pattern-${i}`;
-      node.patternId = patternId;
+      const clipId = `node-clip-${i}`;
+      node.clipId = clipId;
 
-      const pattern = defs.append('pattern')
-        .attr('id', patternId)
-        .attr('patternUnits', 'objectBoundingBox')
-        .attr('patternContentUnits', 'objectBoundingBox')
-        .attr('width', 1)
-        .attr('height', 1);
+      const clipPath = defs.append('clipPath')
+        .attr('id', clipId);
 
-      pattern.append('image')
-        .attr('href', node.photoLink)
-        .attr('xlink:href', node.photoLink)
-        .attr('x', 0)
-        .attr('y', 0)
-        .attr('width', 1)
-        .attr('height', 1)
-        .attr('preserveAspectRatio', 'xMidYMid slice');
+      clipPath.append('circle')
+        .attr('cx', 0)
+        .attr('cy', 0)
+        .attr('r', 5 + node.scale * 3);
     }
   });
   
@@ -237,9 +229,20 @@ function initVisualization(data) {
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
     .attr('r', d => 5 + d.scale * 3)
-    .attr('fill', d => d.patternId ? `url(#${d.patternId})` : d.color)
+    .attr('fill', d => d.color)
     .attr('stroke', '#262123')
     .attr('stroke-width', 2);
+
+  // Add images inside circles for nodes with photos
+  nodeGroups.filter(d => d.clipId).append('image')
+    .attr('href', d => d.photoLink)
+    .attr('xlink:href', d => d.photoLink)
+    .attr('x', d => -(5 + d.scale * 3))
+    .attr('y', d => -(5 + d.scale * 3))
+    .attr('width', d => (5 + d.scale * 3) * 2)
+    .attr('height', d => (5 + d.scale * 3) * 2)
+    .attr('preserveAspectRatio', 'xMidYMid slice')
+    .attr('clip-path', d => `url(#${d.clipId})`);
   
   // Add labels (project names) to all nodes
   nodeGroups.append('text')
