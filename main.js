@@ -209,20 +209,27 @@ function initVisualization(data) {
     .on('mouseout', handleNodeMouseOut)
     .on('click', handleNodeClick);
   
-  // For each node, create clipPath if it has a photo
+  // For each node, create an SVG pattern if it has a photo
   data.nodes.forEach((node, i) => {
-    const radius = 5 + node.scale * 3;
-    const clipId = `clip-${i}`;
-    
     if (node.photoLink && node.photoLink.trim() !== '') {
-      // Create clipPath for circular clipping
-      const clipPath = defs.append('clipPath')
-        .attr('id', clipId);
-      
-      clipPath.append('circle')
-        .attr('cx', 0)
-        .attr('cy', 0)
-        .attr('r', radius);
+      const patternId = `node-pattern-${i}`;
+      node.patternId = patternId;
+
+      const pattern = defs.append('pattern')
+        .attr('id', patternId)
+        .attr('patternUnits', 'objectBoundingBox')
+        .attr('patternContentUnits', 'objectBoundingBox')
+        .attr('width', 1)
+        .attr('height', 1);
+
+      pattern.append('image')
+        .attr('href', node.photoLink)
+        .attr('xlink:href', node.photoLink)
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('width', 1)
+        .attr('height', 1)
+        .attr('preserveAspectRatio', 'xMidYMid slice');
     }
   });
   
@@ -230,43 +237,9 @@ function initVisualization(data) {
   nodeElements = nodeGroups.append('circle')
     .attr('class', 'node')
     .attr('r', d => 5 + d.scale * 3)
-    .attr('fill', d => d.color) // Fallback color
+    .attr('fill', d => d.patternId ? `url(#${d.patternId})` : d.color)
     .attr('stroke', '#262123')
     .attr('stroke-width', 2);
-  
-  // Add images inside circles for nodes with photos
-  nodeGroups.each(function(d, i) {
-    if (d.photoLink && d.photoLink.trim() !== '') {
-      const radius = 5 + d.scale * 3;
-      
-      // Add image element (will be on top of circle)
-      const imageElement = d3.select(this)
-        .append('image')
-        .attr('href', d.photoLink) // Use href for modern browsers
-        .attr('xlink:href', d.photoLink) // Fallback for older browsers  
-        .attr('x', -radius)
-        .attr('y', -radius)
-        .attr('width', radius * 2)
-        .attr('height', radius * 2)
-        .attr('preserveAspectRatio', 'xMidYMid slice')
-        .attr('clip-path', `url(#clip-${i})`)
-        .style('opacity', 1); // Make visible immediately
-      
-      // Preload image to verify it loads and handle errors
-      const testImg = new Image();
-      testImg.crossOrigin = 'anonymous';
-      testImg.onload = function() {
-        // Image loaded successfully - ensure it's visible
-        imageElement.style('opacity', 1);
-      };
-      testImg.onerror = function() {
-        // Image failed to load - hide the SVG image element (show circle color instead)
-        imageElement.style('opacity', 0);
-      };
-      // Start loading the image
-      testImg.src = d.photoLink;
-    }
-  });
   
   // Add labels (project names) to all nodes
   nodeGroups.append('text')
