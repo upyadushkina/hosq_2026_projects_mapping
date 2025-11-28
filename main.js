@@ -699,22 +699,40 @@ async function init() {
   // Filters popup toggle
   const filtersBtn = document.getElementById('filters-btn');
   const filtersPopup = document.getElementById('filters-popup');
+  const filtersBackdrop = document.getElementById('filters-backdrop');
   const closeFiltersBtn = document.getElementById('close-filters');
   
-  filtersBtn.addEventListener('click', () => {
+  function openFiltersPopup() {
     filtersPopup.classList.add('active');
+    filtersBackdrop.classList.add('active');
+  }
+  
+  function closeFiltersPopup() {
+    filtersPopup.classList.remove('active');
+    filtersBackdrop.classList.remove('active');
+  }
+  
+  filtersBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFiltersPopup();
   });
   
   closeFiltersBtn.addEventListener('click', () => {
-    filtersPopup.classList.remove('active');
+    closeFiltersPopup();
+  });
+  
+  // Close filters popup when clicking on backdrop
+  filtersBackdrop.addEventListener('click', () => {
+    closeFiltersPopup();
   });
   
   // Close filters popup when clicking outside
   document.addEventListener('click', (e) => {
     if (filtersPopup.classList.contains('active') && 
         !filtersPopup.contains(e.target) && 
-        e.target !== filtersBtn) {
-      filtersPopup.classList.remove('active');
+        e.target !== filtersBtn &&
+        !filtersBackdrop.contains(e.target)) {
+      closeFiltersPopup();
     }
   });
   
